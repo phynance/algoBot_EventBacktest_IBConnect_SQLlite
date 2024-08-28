@@ -1,11 +1,3 @@
-#
-# Python Script with Long Short Class
-# for Event-Based Backtesting
-#
-# Python for Algorithmic Trading
-# (c) Dr. Yves J. Hilpisch
-# The Python Quants GmbH
-#
 from BacktestBase import *
 
 
