@@ -1,3 +1,6 @@
+
+################################################  public functions ####################################################
+
 def get_transactions(self):
     with self.sqlite_connect() as conn:
         df = self.__sqlite_query_data(conn, IB_SQLITE_TRANSACTION_TBL_NAME)

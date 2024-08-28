@@ -1,4 +1,4 @@
-# test2.py
+# InteractiveBrokerTradeAPI.py
 from contextlib import contextmanager
 import ib_insync
 from IBconnect.TradeAPI import AbstractTradeInterface

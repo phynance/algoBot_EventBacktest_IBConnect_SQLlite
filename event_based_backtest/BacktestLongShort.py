@@ -112,7 +112,7 @@ class BacktestLongShort(BacktestBase):
 
 if __name__ == '__main__':
     def run_strategies(backLS):
-        backLS.run_sma_strategy(42, 252)
+        backLS.signal_calculation(42, 252)
         #backLS.run_momentum_strategy(60)
         #backLS.run_mean_reversion_strategy(50, 5)
 

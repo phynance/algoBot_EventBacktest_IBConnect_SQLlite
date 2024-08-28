@@ -1,0 +1,2 @@
+statsmodels==0.12.2
+yfinance==0.2.40

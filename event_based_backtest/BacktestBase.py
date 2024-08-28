@@ -4,67 +4,34 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import os
 import requests
+from performance import *
 
 #print(plt.style.available)
 pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', None)
+pd.set_option('display.max_rows', 10)
 
 plt.style.use('seaborn-v0_8')
 mpl.rcParams['font.family'] = 'serif'
 
 
 class BacktestBase(object):
-    """ Base class for event-based backtesting of trading strategies.
-    Attributes
-    ==========
-        symbol: str
-            TR RIC (financial instrument) to be used
-        start: str
-            start date for data selection
-        end: str
-            end date for data selection
-        amount: float
-            amount to be invested either once or per trade
-        ftc: float
-            fixed transaction costs per trade (buy or sell)
-        ptc: float
-            proportional transaction costs per trade (buy or sell)
-    Methods     =======
-        get_data:
-            retrieves and prepares the base data set
-        plot_data:
-            plots the closing price for the symbol
-        get_date_price:
-            returns the date and price for the given bar
-        print_balance:
-            prints out the current (cash) balance
-        print_net_wealth:
-            prints out the current net wealth
-        place_buy_order:
-            places a buy order
-        place_sell_order:
-            places a sell order
-        close_out:
-            closes out a long or short position
-    """
-
-    def __init__(self, symbol, start, end, amount, ftc=0.0, ptc=0.0, verbose=True):
+    # TODO data fetch migration, accepting numerous symbols,
+    def __init__(self, symbol, start, end, cash, commission_included=False, verbose=True):
         self.data = None
         self.symbol = symbol
         self.start = start
         self.end = end
-        self.initial_amount = amount
-        self.amount = amount
-        self.ftc = ftc
-        self.ptc = ptc
+        self.initial_amount = cash
+        self.cash = cash
+        self.commission = 0
         self.units = 0
         self.position = 0
         self.trades = 0
+        self.commission_included = commission_included
         self.verbose = verbose
         self.get_data()  # lead to a new dataframe: self.data
-        self.buydates = []
-        self.selldates = []
-        #self.data = pd.DataFrame()
+        self.tradeRecord = pd.DataFrame(columns=['units', 'price'])
+
 
     def get_data(self):
         """ Retrieves and prepares the data. """
@@ -79,97 +46,114 @@ class BacktestBase(object):
 
         raw = pd.DataFrame(raw[self.symbol])
         raw = raw.loc[self.start:self.end]
-        raw.rename(columns={self.symbol: 'price'}, inplace=True)
-        raw['return'] = np.log(raw / raw.shift(1))
+        #raw.rename(columns={self.symbol: 'price'}, inplace=True)
+        #raw['return'] = np.log(raw / raw.shift(1))
 
         self.data = raw.dropna()
-        self.data.loc[:, ['position', 'units', 'net_wealth', 'amount']] = None  # initialize 3 more columns
+        self.data.loc[:, ['units', 'cash', 'net_wealth']] = None  # initialize 3 more columns
 
     def get_date_price(self, bar):
         ''' Return date and price for bar.'''
-        date = str(self.data.index[bar])[:10]
-        price = self.data.price.iloc[bar]
+        date = self.data.index[bar]
+        price = self.data[self.symbol].iloc[bar]
         return date, price
 
     def print_balance(self, bar):
         ''' Print out current cash balance info.'''
         date, price = self.get_date_price(bar)
-        print(f'{date} | current balance {self.amount:.2f}')
+        print(f'{str(date)[:10]} | current balance {self.cash:.2f}')
 
-    def print_net_wealth(self, bar):
-        ''' Print out current cash balance info. '''
+    def calculate_commission(self, num_shares, price_per_share):
+        # Define commission rate and limits
+        commission_rate = 0.0035
+        min_commission = 0.35
+        max_commission_percentage = 0.01
+        basic_commission = num_shares * commission_rate
+        trade_value = num_shares * price_per_share
+        max_commission = trade_value * max_commission_percentage
+        commission = max(min_commission, min(basic_commission, max_commission))
+        return commission
 
-        date, price = self.get_date_price(bar)
-        net_wealth = self.units * price + self.amount
-        print(f'{date} | current net wealth {net_wealth:.2f}')
-
-    def place_buy_order(self, bar, units=None, amount=None):
+    def place_buy_order(self, bar, units=None, cash=None):
         # TODO save the buying date and price
         ''' Place a buy order. '''
         date, price = self.get_date_price(bar)
-        self.buydates.append(bar)
+        #self.buydates.append(bar)
         if units is None:
-            units = int(amount / price)
-        self.amount -= (units * price) * (1 + self.ptc) + self.ftc
+            units = int(cash / price)
+
+        self.tradeRecord.loc[date] = [units, price]
+        if self.commission_included:
+            self.commission = self.calculate_commission(units, price)
+        else:
+            self.commission = 0
+
+        self.cash -= (units * price) + self.commission
         self.units += units
         self.trades += 1
         if self.verbose:
-            print(f'{date} | buying {units} units at {price:.2f} ')
+            print(f'{str(date)[:10]} | buying {units} units at {price:.2f} ')
             self.print_balance(bar)
-        self.print_net_wealth(bar)
         #self.data.loc[self.data.index[bar], 'units'] = self.units  # store in the df ###########
 
-    def place_sell_order(self, bar, units=None, amount=None):
+    def place_sell_order(self, bar, units=None, cash=None):
         # TODO save the selling date and price
         ''' Place a sell order.'''
         date, price = self.get_date_price(bar)
-        self.selldates.append(bar)
+        #self.selldates.append(bar)
         if units is None:
-            units = int(amount / price)
-        self.amount += (units * price) * (1 - self.ptc) - self.ftc
+            units = int(cash / price)
+        self.tradeRecord.loc[date] = [-units, price]
+
+        if self.commission_included:
+            self.commission = self.calculate_commission(units, price)
+        else:
+            self.commission = 0
+
+        self.cash += (units * price) - self.commission  #cash out
         self.units -= units
         self.trades += 1
         if self.verbose:
-            print(f'{date} | selling {units} units at {price:.2f} ')
+            print(f'{str(date)[:10]} | selling {units} units at {price:.2f} ')
             self.print_balance(bar)
-        self.print_net_wealth(bar)
         #self.data.loc[self.data.index[bar], 'units'] = self.units  # store in the df ###########
 
     def close_out(self, bar):
         ''' Closing out a long or short position.'''
         date, price = self.get_date_price(bar)
-        self.amount += self.units * price
+        self.cash += self.units * price
         self.units = 0
         self.trades += 1
         if self.verbose:
-            print(f'{date} | inventory {self.units} units at {price:.2f}')
+            print(f'{str(date)[:10]} | inventory {self.units} units at {price:.2f}')
             print('=' * 55)
-        print('Final balance   [$] {:.2f}'.format(self.amount))
-        perf = ((self.amount - self.initial_amount) /
-                self.initial_amount * 100)
-        print('Net Performance [%] {:.2f}'.format(perf))
+        print('Final balance   [$] {:.2f}'.format(self.cash))
+        # perf = ((self.cash - self.initial_amount) /
+        #         self.initial_amount * 100)
+        # print('Net Performance [%] {:.2f}'.format(perf))
         print('Trades Executed [#] {:.2f}'.format(self.trades))
         print('=' * 55)
 
-    #TODO equity curve, sharpe ratio, CAGR, Information Ratio, Calamr, Sortino, MMD, winning rate
 
     def plot_data(self):
         """ Plots the closing prices for symbol."""
-        # TODO plot the equity curve & chart showing buying & selling dates
         plt.figure(1)
-        plt.subplot(2,1,1)
-        self.data['price'].plot(title=self.symbol, linewidth=1., label='stock price')
+        plt.subplot(2, 1, 1)
+        plt.plot(self.data.index, self.data[self.symbol], linewidth=1., label='Stock Price')
 
-        for pos in self.buydates:
-            """ add green dot for buy dates """
-            plt.plot(self.data.index[pos], self.data.price.iloc[pos], 'go', markersize=5, label='buy')
+        #self.data[self.symbol].plot(title=self.symbol, linewidth=1., label='stock price')
 
-        for pos in self.selldates:
-            """ add green dot for sell dates """
-            plt.plot(self.data.index[pos], self.data.price.iloc[pos], 'ro', markersize=5, label='sell')
+        long_dates = []
+        long_prices = []
 
-        plt.subplot(2,1,2)
-        self.data['net_wealth'].plot(title="Equity curve", color='#FFAF33')
+        for date, row in self.tradeRecord.iterrows():
+            if row['units'] > 0:
+                plt.plot(date, row['price'], '^', markersize=5, color='g', label='Long')
+            elif row['units'] < 0:
+                plt.plot(date, row['price'], 'v', markersize=5, color='r', label='short')
+
+        plt.subplot(2, 1, 2)
+        self.data['equity_curve'].plot(title="Equity curve", color='#FFAF33')
 
         plt.subplots_adjust(left=0.1,
                             bottom=0.1,
@@ -179,10 +163,20 @@ class BacktestBase(object):
                             hspace=0.6)
         plt.show()
 
+    def summary_stats(self):
+        # TODO   CAGR, Information Ratio, , Sortino, winning rate
 
-if __name__ == '__main__':
-    bb = BacktestBase('AAPL.O', '2010-1-1', '2019-12-31', 10000)
-    dftest = bb.data
-    print(dftest.info())
-    #print(dftest.iloc[0:750])
-    #bb.plot_data(['price','net_wealth'])
+        self.data = create_equity_curve_dataframe(self.data)
+        total_return = self.data['equity_curve'].iloc[-1]
+        sharpe_ratio = calculate_sharpe_ratio(self.data['returns'])
+        max_dd, dd_duration = calculate_drawdowns(self.data['equity_curve'])
+        calmar_ratio = calculate_calmar_ratio(self.data['equity_curve'])
+
+        stats = [("Total Return", "%0.2f%%" % ((total_return - 1.0) * 100.0)),
+                 ("Sharpe Ratio", "%0.2f" % sharpe_ratio),
+                 ("Calmar Ratio", "%0.2f" % calmar_ratio),
+                 ("Max Drawdown", "%0.2f%%" % (max_dd * 100.0)),
+                 ("Drawdown Duration", "%d" % dd_duration)]
+
+        for stat in stats:
+            print(f"{stat[0]}: {stat[1]}")
