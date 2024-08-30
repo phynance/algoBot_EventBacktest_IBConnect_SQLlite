@@ -37,10 +37,10 @@ To have a better understanding on the workflow and features of this trading bot,
 
 ![Signals_EquityCurve.png](Signals_EquityCurve.png)
 
-=======================================================\
+======================================================= \
 Final balance   [\$] 47074.72 \
-Trades Executed [#] 68.00\
-=======================================================
+Trades Executed [\#] 68.00 \
+======================================================= 
 
 Total Return: 370.75% \
 Sharpe Ratio: 0.91 \
