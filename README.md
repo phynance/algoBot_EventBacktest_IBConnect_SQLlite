@@ -22,7 +22,7 @@ The trading signals are only triggered through the arrival of new data.
 Simulate trading strategies using historical data.
 **Transaction Cost Management**: Incorporate fixed and variable transaction costs.
 
-### 4. Trading signals Paper/ Live trading
+### 4. Paper/ Live trading
 
 
 ### 5. Database setup to store portfolio history
@@ -33,6 +33,20 @@ Simulate trading strategies using historical data.
 
 
 ## QuickStart
+To have a better understanding on the workflow and features of this trading bot, user can first try to run the `SMAsCross_QuickStart` in `event_based_backtest`.
+
+![Signals_EquityCurve.png](Signals_EquityCurve.png)
+
+=======================================================\
+Final balance   [\$] 47074.72 \
+Trades Executed [#] 68.00\
+=======================================================
+
+Total Return: 370.75% \
+Sharpe Ratio: 0.91 \
+Calmar Ratio: 0.30 \
+Max Drawdown: 55.33% \
+Drawdown Duration: 495
 
 ## Requirements
 
