@@ -208,5 +208,5 @@ Websocket to extract real-time data for higher frequency trading
 
 This project is based on concepts from various sources:
 
-1【How 2】Set Up Trading API Template In Python — Connecting My Trading Strategies To Interactive Brokers][Link to Book]\
+1【How 2】Set Up Trading API Template In Python — Connecting My Trading Strategies To Interactive Brokers]\
 2 Python for Algorithmic Trading: From Idea to Cloud Deployment* by YvesYves  Hilpisch. OREILLY, 2021. 
