@@ -2,23 +2,23 @@ import abc
 
 class AbstractTradeInterface(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def connect(self):
+    def establish_connection(self):
         pass
 
     @abc.abstractmethod
-    def get_account_detail(self):
+    def retrieve_account_info(self):
         pass
 
     @abc.abstractmethod
-    def get_last_price_from_quote(self):
+    def fetch_last_price(self):
         pass
 
     @abc.abstractmethod
-    def place_order(self):
+    def submit_order(self):
         pass
 
     @abc.abstractmethod
-    def is_market_open(self):
+    def is_trading_day_open(self):
         pass
 
     @abc.abstractmethod
@@ -26,5 +26,5 @@ class AbstractTradeInterface(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_transactions(self):
+    def fetch_transaction_history(self):
         pass

@@ -3,7 +3,7 @@ import sqlite3
 from contextlib import contextmanager
 import pandas as pd
 from datetime import datetime, timedelta
-from IBconnect.InteractiveBrokerTradeAPI import InteractiveBrokerTradeAPI
+from IBconnect.InteractiveBrokerTradeAPI_test import BrokerAPI
 import ib_insync
 
 
@@ -15,12 +15,11 @@ class DatabaseManager:
     def __init__(self):
         self.IB_SQLITE_DB_NAME = 'IB_SQLITE_DB.db'
         self.IB_SQLITE_TRANSACTION_TBL_NAME = 'transactions'
-        self.IB_SQLITE_CPPI_TBL_NAME = 'cppi'
         self.IB_SQLITE_ORDER_TBL_NAME = 'orders'
-        self.broker = InteractiveBrokerTradeAPI()
-        with self.broker.connect() as ib_conn:
-            self.accounts, self.positions, self.orders = ib_conn.get_account_detail()
-            self.client = ib_conn.client
+        self.broker = BrokerAPI()
+        with self.broker.establish_connection() as ib_conn:
+            self.accounts, self.positions, self.orders = ib_conn.retrieve_account_info()
+            self.client = ib_conn.api_client
         #self.client = self.broker.client
         self.currency = 'USD'
         self.timezone = None  # Replace with actual timezone
@@ -50,14 +49,7 @@ class DatabaseManager:
                 SPY_CLOSE_PRICE FLOAT NOT NULL,
                 COMMISSION FLOAT NOT NULL);
             ''')
-        elif tbl_name == self.IB_SQLITE_CPPI_TBL_NAME:
-            db_conn.execute(f'''CREATE TABLE {self.IB_SQLITE_CPPI_TBL_NAME}
-                (ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                CREATE_TIME DATETIME NOT NULL,
-                MAX_ASSET FLOAT NOT NULL,
-                E_RATIO FLOAT NOT NULL,
-                B_RATIO FLOAT NOT NULL);
-            ''')
+
         elif tbl_name == self.IB_SQLITE_ORDER_TBL_NAME:
             db_conn.execute(f'''CREATE TABLE {self.IB_SQLITE_ORDER_TBL_NAME}
                 (ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,18 +104,13 @@ class DatabaseManager:
         db_conn.commit()
         return True
 
-    ################################################
-    # Public functions
-    ################################################
+################################################################################################
+# Public functions
+################################################################################################
 
     def get_transactions(self):
         with self.sqlite_connect() as db_conn:
             df = self._sqlite_query_data(db_conn, self.IB_SQLITE_TRANSACTION_TBL_NAME)
-        return df
-
-    def get_cppi_variables(self):
-        with self.sqlite_connect() as db_conn:
-            df = self._sqlite_query_data(db_conn, self.IB_SQLITE_CPPI_TBL_NAME)
         return df
 
     def update_orders_in_db(self):
@@ -160,8 +147,8 @@ class DatabaseManager:
                     portfolio_value += float(row.value)
 
         # SPY close value
-        with self.broker.connect() as ib_conn:
-            benchmark_value = ib_conn.get_last_price_from_quote('SPY')  # Replace with actual method to get SPY price
+        with self.broker.establish_connection() as ib_conn:
+            benchmark_value = ib_conn.fetch_last_price('SPY')  # Replace with actual method to get SPY price
 
         # Update the latest commission
         commission = self.get_commission_from_db(1)
@@ -174,17 +161,6 @@ class DatabaseManager:
                 self.IB_SQLITE_TRANSACTION_TBL_NAME
             )
         print(f'Database {self.IB_SQLITE_TRANSACTION_TBL_NAME} updated')
-
-    def update_cppi_variables_in_db(self, max_asset, E, B):
-        sql = f'''INSERT OR IGNORE INTO {self.IB_SQLITE_CPPI_TBL_NAME} (CREATE_TIME, MAX_ASSET, E_RATIO, B_RATIO) VALUES (?,?,?,?);'''
-
-        with self.sqlite_connect() as db_c:
-            self._sqlite_insert_record(
-                db_c,
-                sql,
-                (datetime.now(), max_asset, E, B),
-                self.IB_SQLITE_CPPI_TBL_NAME
-            )
 
     def get_commission_from_db(self, time_delta: int = 0) -> float:
         with self.sqlite_connect() as db_c:
@@ -207,9 +183,6 @@ if __name__ == "__main__":
         if not db_manager._sqlite_is_table_exist(db_conn, db_manager.IB_SQLITE_TRANSACTION_TBL_NAME):
             db_manager._sqlite_create_table(db_conn, db_manager.IB_SQLITE_TRANSACTION_TBL_NAME)
 
-        if not db_manager._sqlite_is_table_exist(db_conn, db_manager.IB_SQLITE_CPPI_TBL_NAME):
-            db_manager._sqlite_create_table(db_conn, db_manager.IB_SQLITE_CPPI_TBL_NAME)
-
         if not db_manager._sqlite_is_table_exist(db_conn, db_manager.IB_SQLITE_ORDER_TBL_NAME):
             db_manager._sqlite_create_table(db_conn, db_manager.IB_SQLITE_ORDER_TBL_NAME)
 
@@ -217,14 +190,8 @@ if __name__ == "__main__":
     transactions_df = db_manager.get_transactions()
     print(transactions_df)
 
-    cppi_df = db_manager.get_cppi_variables()
-    print(cppi_df)
-
     db_manager.update_orders_in_db()
     db_manager.update_transactions_in_db()
-
-    # Updating CPPI variables
-    db_manager.update_cppi_variables_in_db(max_asset=1000, E=0.5, B=0.5)
 
     # Fetching commission from DB
     commission = db_manager.get_commission_from_db(time_delta=1)
