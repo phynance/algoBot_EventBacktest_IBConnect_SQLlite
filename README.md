@@ -5,7 +5,7 @@ This project is an algorithmic trading bot implemented in Python, designed for e
 # Work flow 
 ## 1. Data Fetching:
 
-The historical data is fetched through yfinance library. StockDataFetcher class is initialized with a date range and an optional list of stock symbols. 
+The historical data is fetched through yfinance library. 
 In this project, the sample data are attached in the repo `data` so user can directly use the example data set to have a quick start on the trading bot.
 
 ## 2. Event-Based Backtesting 
@@ -14,15 +14,7 @@ Although vectorized backtesting is efficient and convenient to implement, it is 
 The trading signals are only triggered through the arrival of new data.
 
 
-## 3. Multiple Trading Strategies:
-  - **Long/Short Strategy**: Execute trades based on Simple Moving Averages (SMA).
-  - **Momentum Strategy**: Trade based on recent price momentum.
-  - **Mean Reversion Strategy**: Trade based on the deviation from a moving average.
-  - 
-Simulate trading strategies using historical data.
-**Transaction Cost Management**: Incorporate fixed and variable transaction costs.
-
-## 4. Paper/ Live trading
+## 3. Paper/ Live trading
 In this project, the trading bot is connected to Interactive broker. Before connection, either `Trader Workstation (TWS)`
 or `IB gateway` is needed to be installed on your side first as an intermediary between your desktop/laptop and the IBKR API service.
 
@@ -98,9 +90,7 @@ Disconnected from the API
 
 ```
 
-
-
-## 5. Local Database Setup to Store Portfolio History
+## 4. Local Database Setup to Store Portfolio History
 
 Interactive Brokers (IB) typically stores historical trading data for up to 30 days for intraday trades. 
 Therefore, it is vital to set up a database for retrieving the historic trades and portfolio performance from it 
@@ -189,10 +179,12 @@ Drawdown Duration: 495
 
 ## Requirements
 
-- Python 3.9
-- `pandas`
-- `numpy`
-- ib_insync
+numpy==1.9.1
+pandas==0.15.2
+python-dateutil==2.4.0
+pytz==2014.10
+six==1.9.0
+
 
 ## Installation
 
